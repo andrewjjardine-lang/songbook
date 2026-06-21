@@ -1,15 +1,482 @@
-import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🔥 Campfire Songbook</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100vh; }
+    body { background: #1C1410; font-family: 'Lato', system-ui, sans-serif; color: #F5EDD8; }
 
-// Values come from your .env.local file (see .env.local.template)
-const firebaseConfig = {
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
-}
+    .header {
+      background: linear-gradient(160deg, #1C1410 0%, #2E1F0E 60%, #1C1410 100%);
+      border-bottom: 2px solid #E8873A44;
+      padding: 2rem 1.5rem 1.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 60% 80% at 50% 120%, #E8873A22 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .header-flame {
+      font-size: 2.8rem; display: block; margin-bottom: 0.4rem;
+      filter: drop-shadow(0 0 12px #E8873A);
+      animation: flicker 2.4s ease-in-out infinite alternate;
+    }
+    @keyframes flicker {
+      0%   { filter: drop-shadow(0 0 8px #E8873A) brightness(1); transform: scale(1) rotate(-1deg); }
+      40%  { filter: drop-shadow(0 0 18px #F5A623) brightness(1.15); transform: scale(1.04) rotate(0.5deg); }
+      70%  { filter: drop-shadow(0 0 10px #E8873A) brightness(0.95); transform: scale(0.98) rotate(-0.5deg); }
+      100% { filter: drop-shadow(0 0 14px #F5A623) brightness(1.08); transform: scale(1.02) rotate(1deg); }
+    }
+    .header h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 900; color: #F5EDD8; letter-spacing: 0.02em; line-height: 1.1;
+    }
+    .header h1 span { color: #E8873A; }
+    .header p { color: #C4A97D; font-size: 0.95rem; margin-top: 0.5rem; font-weight: 300; letter-spacing: 0.04em; }
 
-const app = initializeApp(firebaseConfig)
-export const db = getFirestore(app)
+    .nav { display: flex; justify-content: center; gap: 0.5rem; padding: 1rem 1.5rem 0; background: #1C1410; }
+    .nav button {
+      background: transparent; border: 1px solid #E8873A55; color: #C4A97D;
+      font-family: 'Lato', sans-serif; font-size: 0.85rem; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 0.5rem 1.2rem; border-radius: 2px; cursor: pointer; transition: all 0.2s;
+    }
+    .nav button.active, .nav button:hover { background: #E8873A; border-color: #E8873A; color: #1C1410; font-weight: 700; }
+
+    .container { max-width: 680px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    .container.wide { max-width: 800px; }
+
+    .card { background: #2E1F0E; border: 1px solid #E8873A33; border-radius: 4px; padding: 1.8rem; margin-bottom: 1.2rem; }
+    .card h2 {
+      font-family: 'Playfair Display', Georgia, serif; font-size: 1.25rem; color: #F5EDD8;
+      margin-bottom: 1.2rem; padding-bottom: 0.7rem; border-bottom: 1px solid #E8873A33;
+    }
+    .card p.subtitle { font-size: 0.88rem; color: #C4A97D; margin-bottom: 1.4rem; line-height: 1.6; }
+
+    .field { margin-bottom: 1.1rem; }
+    .field label { display: block; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; color: #C4A97D; margin-bottom: 0.4rem; font-weight: 700; }
+    .field input, .field textarea {
+      width: 100%; background: #1C1410; border: 1px solid #E8873A44; border-radius: 2px;
+      color: #F5EDD8; font-family: 'Lato', sans-serif; font-size: 0.95rem;
+      padding: 0.65rem 0.9rem; outline: none; transition: border-color 0.2s; resize: vertical;
+    }
+    .field input:focus, .field textarea:focus { border-color: #E8873A; }
+    .field textarea { min-height: 110px; }
+    .field .error-msg { color: #E74C3C; font-size: 0.8rem; margin-top: 0.3rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.65rem 1.4rem; border: none; border-radius: 2px;
+      font-family: 'Lato', sans-serif; font-size: 0.88rem; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary { background: #E8873A; color: #1C1410; }
+    .btn-primary:hover { background: #F5A623; }
+    .btn-primary:disabled { background: #6B4A2A; color: #9E7A4A; cursor: default; }
+    .btn-ghost { background: transparent; color: #C4A97D; border: 1px solid #E8873A44; }
+    .btn-ghost:hover { border-color: #E8873A; color: #F5EDD8; }
+    .btn-danger { background: #C0392B22; color: #E74C3C; border: 1px solid #C0392B44; }
+    .btn-danger:hover { background: #C0392B44; }
+    .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.78rem; }
+
+    .toast { padding: 0.9rem 1.2rem; border-radius: 2px; margin-top: 1rem; font-size: 0.9rem; }
+    .toast.success { background: #6B7C5E33; border: 1px solid #6B7C5E; color: #A8C49A; }
+    .toast.error { background: #C0392B22; border: 1px solid #C0392B55; color: #E74C3C; }
+    .toast a { color: inherit; text-decoration: underline; cursor: pointer; background: none; border: none; font: inherit; margin-left: 0.8rem; }
+
+    .stats { display: flex; gap: 1.5rem; flex-wrap: wrap; padding: 1rem 1.8rem; background: #2E1F0E; border: 1px solid #E8873A33; border-radius: 4px; margin-bottom: 1.2rem; margin-top: 2rem; }
+    .stat { text-align: center; }
+    .stat-num { display: block; font-family: 'Playfair Display', Georgia, serif; font-size: 1.6rem; color: #E8873A; line-height: 1; }
+    .stat-label { font-size: 0.72rem; color: #C4A97D; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    .song-item { background: #1C1410; border: 1px solid #E8873A22; border-radius: 2px; padding: 1rem 1.2rem; margin-bottom: 0.7rem; }
+    .song-item-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }
+    .song-title-block h3 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.05rem; color: #F5EDD8; }
+    .song-title-block p { font-size: 0.82rem; color: #C4A97D; margin-top: 0.15rem; }
+
+    .badge { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.6rem; border-radius: 20px; white-space: nowrap; }
+    .badge-green { background: #6B7C5E33; color: #A8C49A; border: 1px solid #6B7C5E44; }
+    .badge-red   { background: #C0392B22; color: #E74C3C; border: 1px solid #C0392B44; }
+
+    .lyrics-preview { font-size: 0.82rem; color: #9E8A6A; line-height: 1.55; margin-top: 0.6rem; max-height: 80px; overflow: hidden; white-space: pre-wrap; }
+    .lyrics-preview.expanded { max-height: none; }
+    .expand-btn { background: none; border: none; color: #E8873A; font-size: 0.78rem; cursor: pointer; padding: 0.2rem 0; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; }
+    .song-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.7rem; }
+
+    .section-label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: #C4A97D; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.8rem; }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: #E8873A22; }
+
+    .empty { text-align: center; padding: 3rem 1rem; color: #6B4A2A; }
+    .empty .emoji { font-size: 2.5rem; margin-bottom: 0.8rem; display: block; }
+
+    .login-wrap { max-width: 380px; margin: 3rem auto; }
+    .admin-banner { background: #E8873A11; border: 1px solid #E8873A44; border-radius: 2px; padding: 0.7rem 1rem; font-size: 0.82rem; color: #C4A97D; margin-bottom: 1.2rem; text-align: center; }
+
+    .action-bar { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+
+    .booklet-preview { background: #FFF8ED; color: #1C1410; font-family: Georgia, serif; border-radius: 4px; overflow: hidden; box-shadow: 0 8px 32px #00000088; }
+    .booklet-cover { background: #2E1F0E; color: #F5EDD8; text-align: center; padding: 3rem 2rem; border-bottom: 3px solid #E8873A; }
+    .booklet-cover h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 2rem; color: #E8873A; margin-bottom: 0.5rem; }
+    .booklet-cover p { color: #C4A97D; font-size: 0.9rem; margin-top: 0.5rem; }
+    .booklet-cover .ornament { text-align: center; color: #E8873A; font-size: 1.2rem; letter-spacing: 0.5em; margin-top: 2rem; opacity: 0.5; }
+    .booklet-song { padding: 2rem; border-bottom: 1px solid #E8873A33; }
+    .booklet-song .num { font-size: 0.75rem; color: #9E7A4A; margin-bottom: 0.5rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    .booklet-song h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 1.4rem; color: #2E1F0E; border-bottom: 2px solid #E8873A; padding-bottom: 0.4rem; margin-bottom: 0.3rem; }
+    .booklet-song .artist { font-size: 0.85rem; color: #6B4A2A; font-style: italic; margin-bottom: 1rem; }
+    .booklet-song pre { font-family: Georgia, serif; font-size: 0.92rem; line-height: 1.75; color: #2E1F0E; white-space: pre-wrap; word-wrap: break-word; }
+    .booklet-song .suggester { font-size: 0.75rem; color: #9E7A4A; margin-top: 1rem; font-style: italic; }
+    .booklet-footer { background: #2E1F0E; padding: 2rem; text-align: center; color: #6B4A2A; font-size: 0.85rem; }
+
+    .booklet-title-field { margin-bottom: 1rem; display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; }
+    .booklet-title-field input { background: #1C1410; border: 1px solid #E8873A44; color: #F5EDD8; font-family: 'Lato', sans-serif; font-size: 0.95rem; padding: 0.5rem 0.8rem; border-radius: 2px; outline: none; flex: 1; min-width: 200px; }
+    .booklet-hint { text-align: center; color: #6B4A2A; font-size: 0.82rem; margin-top: 1.5rem; }
+
+    .loading { text-align: center; padding: 2rem; color: #6B4A2A; }
+    .footer-note { text-align: center; color: #6B4A2A; font-size: 0.8rem; margin-top: 2rem; }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; color: black !important; }
+      .booklet-preview { box-shadow: none !important; border-radius: 0 !important; }
+      .booklet-song { page-break-after: always; }
+      .booklet-cover { page-break-after: always; }
+    }
+    @media (max-width: 500px) {
+      .header h1 { font-size: 1.6rem; }
+      .card { padding: 1.2rem; }
+      .stats { gap: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <span class="header-flame">🔥</span>
+  <h1>Campfire <span>Songbook</span></h1>
+  <p>Suggest songs · Gather lyrics · Print &amp; sing</p>
+</div>
+
+<!-- NAV -->
+<div class="nav no-print">
+  <button id="nav-submit" class="active" onclick="showView('submit')">♪ Suggest a Song</button>
+  <button id="nav-admin" onclick="showView('admin')">⚙ Admin &amp; Booklet</button>
+</div>
+
+<!-- SUBMIT VIEW -->
+<div id="view-submit" class="view active">
+  <div class="container">
+    <div class="card" style="margin-top:2rem">
+      <h2>🎵 Suggest a Song</h2>
+      <p class="subtitle">Help us build the ultimate campfire songbook! Add any song you know — just the title is enough, but feel free to share lyrics too.</p>
+      <div class="field">
+        <label>Your name (optional)</label>
+        <input id="s-name" type="text" placeholder="Who's suggesting this one?" />
+      </div>
+      <div class="field">
+        <label>Song title *</label>
+        <input id="s-title" type="text" placeholder="e.g. Take Me Home, Country Roads" />
+        <div id="s-title-err" class="error-msg" style="display:none">Please enter a song title.</div>
+      </div>
+      <div class="field">
+        <label>Artist / band (optional)</label>
+        <input id="s-artist" type="text" placeholder="e.g. John Denver" />
+      </div>
+      <div class="field">
+        <label>Lyrics (optional — share what you know!)</label>
+        <textarea id="s-lyrics" placeholder="Paste or type any lyrics you know...&#10;&#10;Even a chorus or a verse is helpful."></textarea>
+      </div>
+      <div style="display:flex;gap:1rem;align-items:center;margin-top:0.5rem;flex-wrap:wrap">
+        <button class="btn btn-primary" id="s-submit-btn" onclick="submitSong()">🔥 Add to the Songbook</button>
+        <span id="s-count" style="font-size:0.82rem;color:#6B4A2A"></span>
+      </div>
+      <div id="s-toast" style="display:none"></div>
+    </div>
+    <div class="footer-note">🪵 &nbsp;Gather 'round the fire &nbsp;🪵</div>
+  </div>
+</div>
+
+<!-- ADMIN VIEW -->
+<div id="view-admin" class="view">
+  <!-- Login -->
+  <div id="admin-login" class="container">
+    <div class="login-wrap">
+      <div class="admin-banner">🔒 Admin access only</div>
+      <div class="card">
+        <h2>Sign in</h2>
+        <div class="field">
+          <label>Password</label>
+          <input id="a-pw" type="password" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')adminLogin()" />
+          <div id="a-pw-err" class="error-msg" style="display:none">Incorrect password.</div>
+        </div>
+        <button class="btn btn-primary" onclick="adminLogin()">Enter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin panel -->
+  <div id="admin-panel" style="display:none">
+    <div class="container wide">
+      <div class="stats no-print" id="a-stats">
+        <div class="stat"><span class="stat-num" id="stat-total">0</span><span class="stat-label">Total Songs</span></div>
+        <div class="stat"><span class="stat-num" style="color:#A8C49A" id="stat-lyrics">0</span><span class="stat-label">Have Lyrics</span></div>
+        <div class="stat"><span class="stat-num" id="stat-nolyr">0</span><span class="stat-label">Need Lyrics</span></div>
+      </div>
+
+      <div class="action-bar no-print" id="a-actions">
+        <button class="btn btn-ghost" id="btn-booklet" onclick="toggleBooklet()" style="display:none">📖 Preview Booklet</button>
+        <button class="btn btn-primary" id="btn-print" onclick="window.print()" style="display:none">🖨️ Print / Save PDF</button>
+      </div>
+
+      <!-- Song list -->
+      <div id="song-list-view">
+        <div class="section-label no-print">Song submissions</div>
+        <div id="song-list"><div class="loading">Loading songs…</div></div>
+      </div>
+
+      <!-- Booklet view -->
+      <div id="booklet-view" style="display:none">
+        <div class="booklet-title-field no-print">
+          <input id="booklet-title-input" value="Our Campfire Songbook" oninput="renderBooklet()" />
+          <span style="font-size:0.82rem;color:#C4A97D">Booklet title</span>
+        </div>
+        <div id="booklet-output" class="booklet-preview"></div>
+        <div class="booklet-hint no-print">Only songs with lyrics appear. Use Print / Save PDF to generate your file.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, onSnapshot, query, orderBy }
+    from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+
+  // ── Firebase config ──────────────────────────────────────
+  const firebaseConfig = {
+    apiKey:            "AIzaSyATn1QrE-XfmkIz7m61kE0T7QGJ0j2aNRA",
+    authDomain:        "songbook-9a1e9.firebaseapp.com",
+    projectId:         "songbook-9a1e9",
+    storageBucket:     "songbook-9a1e9.firebasestorage.app",
+    messagingSenderId: "519115357643",
+    appId:             "1:519115357643:web:979543ce7234029f6fca4e"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  const ADMIN_PASSWORD = 'campfire2026';
+  let songs = [];
+  let bookletVisible = false;
+  let unsubscribe = null;
+
+  // ── Helpers ──────────────────────────────────────────────
+  window.showView = function(v) {
+    document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active'));
+    document.getElementById('view-' + v).classList.add('active');
+    document.getElementById('nav-' + v).classList.add('active');
+  };
+
+  // ── Submit ───────────────────────────────────────────────
+  window.submitSong = async function() {
+    const title  = document.getElementById('s-title').value.trim();
+    const name   = document.getElementById('s-name').value.trim();
+    const artist = document.getElementById('s-artist').value.trim();
+    const lyrics = document.getElementById('s-lyrics').value.trim();
+    const errEl  = document.getElementById('s-title-err');
+    const toast  = document.getElementById('s-toast');
+    const btn    = document.getElementById('s-submit-btn');
+
+    errEl.style.display = 'none';
+    if (!title) { errEl.style.display = 'block'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+    toast.style.display = 'none';
+
+    try {
+      await addDoc(collection(db, 'songs'), {
+        submittedBy: name || 'Anonymous',
+        title, artist, lyrics,
+        hasLyrics: !!lyrics,
+        lyricsSource: lyrics ? 'submitted' : 'pending',
+        submittedAt: new Date().toISOString(),
+      });
+
+      // Reset form
+      ['s-name','s-title','s-artist','s-lyrics'].forEach(id => document.getElementById(id).value = '');
+      toast.className = 'toast success';
+      toast.innerHTML = '✓ Song added! Want to suggest another? <a onclick="resetSubmit()">Add another</a>';
+      toast.style.display = 'block';
+
+      // Update count
+      const snap = await getDocs(collection(db, 'songs'));
+      const el = document.getElementById('s-count');
+      if (el) el.textContent = snap.size + ' song' + (snap.size !== 1 ? 's' : '') + ' so far';
+
+    } catch(e) {
+      toast.className = 'toast error';
+      toast.textContent = 'Something went wrong — try again.';
+      toast.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = '🔥 Add to the Songbook';
+    }
+  };
+
+  window.resetSubmit = function() {
+    const toast = document.getElementById('s-toast');
+    const btn   = document.getElementById('s-submit-btn');
+    toast.style.display = 'none';
+    btn.disabled = false;
+    btn.textContent = '🔥 Add to the Songbook';
+  };
+
+  // ── Admin login ──────────────────────────────────────────
+  window.adminLogin = function() {
+    const pw  = document.getElementById('a-pw').value;
+    const err = document.getElementById('a-pw-err');
+    if (pw === ADMIN_PASSWORD) {
+      document.getElementById('admin-login').style.display = 'none';
+      document.getElementById('admin-panel').style.display = 'block';
+      startListening();
+    } else {
+      err.style.display = 'block';
+    }
+  };
+
+  // ── Real-time listener ───────────────────────────────────
+  function startListening() {
+    const q = query(collection(db, 'songs'), orderBy('submittedAt', 'asc'));
+    unsubscribe = onSnapshot(q, snap => {
+      songs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderSongList();
+      updateStats();
+      if (bookletVisible) renderBooklet();
+    });
+  }
+
+  function updateStats() {
+    const withLyrics = songs.filter(s => s.hasLyrics).length;
+    document.getElementById('stat-total').textContent = songs.length;
+    document.getElementById('stat-lyrics').textContent = withLyrics;
+    document.getElementById('stat-nolyr').textContent = songs.length - withLyrics;
+    const btnBooklet = document.getElementById('btn-booklet');
+    btnBooklet.style.display = withLyrics > 0 ? 'inline-flex' : 'none';
+  }
+
+  // ── Song list ────────────────────────────────────────────
+  function renderSongList() {
+    const container = document.getElementById('song-list');
+    if (songs.length === 0) {
+      container.innerHTML = '<div class="empty"><span class="emoji">🎸</span><p>No songs yet. Share your link to get suggestions rolling in!</p></div>';
+      return;
+    }
+    container.innerHTML = songs.map(song => `
+      <div class="song-item" id="item-${song.id}">
+        <div class="song-item-head">
+          <div class="song-title-block">
+            <h3>${esc(song.title)}</h3>
+            <p>${song.artist ? esc(song.artist) + ' · ' : ''}by ${esc(song.submittedBy)}${song.submittedAt ? ' · ' + new Date(song.submittedAt).toLocaleDateString() : ''}</p>
+          </div>
+          <span class="badge ${song.hasLyrics ? 'badge-green' : 'badge-red'}">${song.hasLyrics ? 'Has lyrics' : 'No lyrics'}</span>
+        </div>
+        ${song.lyrics ? `
+          <div class="lyrics-preview" id="lp-${song.id}">${esc(song.lyrics)}</div>
+          <button class="expand-btn" onclick="toggleLyrics('${song.id}')">▼ Show lyrics</button>
+        ` : ''}
+        <div class="song-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editLyrics('${song.id}')">✏️ Edit Lyrics</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSong('${song.id}')">🗑 Remove</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.toggleLyrics = function(id) {
+    const el  = document.getElementById('lp-' + id);
+    const btn = el.nextElementSibling;
+    el.classList.toggle('expanded');
+    btn.textContent = el.classList.contains('expanded') ? '▲ Collapse' : '▼ Show lyrics';
+  };
+
+  window.deleteSong = async function(id) {
+    if (!confirm('Remove this song?')) return;
+    await deleteDoc(doc(db, 'songs', id));
+  };
+
+  window.editLyrics = async function(id) {
+    const song = songs.find(s => s.id === id);
+    const newLyrics = prompt('Edit lyrics for "' + song.title + '":', song.lyrics || '');
+    if (newLyrics === null) return;
+    await updateDoc(doc(db, 'songs', id), {
+      lyrics: newLyrics,
+      hasLyrics: !!newLyrics,
+      lyricsSource: newLyrics ? 'manual' : 'pending'
+    });
+  };
+
+  // ── Booklet ──────────────────────────────────────────────
+  window.toggleBooklet = function() {
+    bookletVisible = !bookletVisible;
+    document.getElementById('song-list-view').style.display = bookletVisible ? 'none' : 'block';
+    document.getElementById('booklet-view').style.display   = bookletVisible ? 'block' : 'none';
+    document.getElementById('btn-booklet').textContent = bookletVisible ? '📋 Song List' : '📖 Preview Booklet';
+    document.getElementById('btn-print').style.display = bookletVisible ? 'inline-flex' : 'none';
+    if (bookletVisible) renderBooklet();
+  };
+
+  window.renderBooklet = function() {
+    const title = document.getElementById('booklet-title-input').value;
+    const withLyrics = songs.filter(s => s.hasLyrics);
+    const month = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long' });
+    let html = `
+      <div class="booklet-cover">
+        <div style="font-size:3rem;margin-bottom:0.8rem">🔥</div>
+        <h1>${esc(title)}</h1>
+        <p>${withLyrics.length} songs · ${month}</p>
+        <div class="ornament">♪ ♩ ♪</div>
+      </div>
+    `;
+    withLyrics.forEach((song, i) => {
+      html += `
+        <div class="booklet-song">
+          <div class="num">Song ${i + 1}</div>
+          <h2>${esc(song.title)}</h2>
+          ${song.artist ? `<p class="artist">${esc(song.artist)}</p>` : ''}
+          <pre>${esc(song.lyrics)}</pre>
+          ${song.submittedBy && song.submittedBy !== 'Anonymous' ? `<p class="suggester">Suggested by ${esc(song.submittedBy)}</p>` : ''}
+        </div>
+      `;
+    });
+    html += `<div class="booklet-footer">🎵 Sing loud, sing proud 🎵</div>`;
+    document.getElementById('booklet-output').innerHTML = html;
+  };
+
+  // ── Util ─────────────────────────────────────────────────
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Init: load count for submit page ────────────────────
+  getDocs(collection(db, 'songs')).then(snap => {
+    const el = document.getElementById('s-count');
+    if (snap.size > 0 && el) el.textContent = snap.size + ' song' + (snap.size !== 1 ? 's' : '') + ' so far';
+  }).catch(() => {});
+</script>
+
+</body>
+</html>
